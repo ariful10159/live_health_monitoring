@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>Early Diabetes Prediction</title>
+    <link rel="stylesheet" href="prediction.css">
+
+   
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="navbar-brand">
+            <i class="fas fa-heartbeat"></i>
+            <span>MedGuard</span>
+        </div>
+        <div class="navbar-links">
+            <a href="dashboard.html" class="nav-link ">
+                <i class="fas fa-home"></i> Home
+            </a>
+
+            <!-- New Prediction Button -->
+            <a href="prediction.php" class="nav-link active">
+                <i class="fas fa-robot"></i> Prediction
+            </a>
+
+            <a href="sensor_data_entry.php" class="nav-link">
+                <i class="fas fa-home"></i> Manually add
+            </a>
+            <a href="patient_details.php" class="nav-link">
+                <i class="fas fa-user"></i> Patient Details
+            </a>
+            <a href="insert_patient.php" class="nav-link">
+                <i class="fas fa-plus"></i> Add Patient details
+            </a>
+            <a href="export_csv.php" class="nav-link" id="export-csv">
+                <i class="fas fa-file-export"></i> Export CSV
+            </a>
+        </div>
+    </nav>
+
+    <div class="prediction-container">
+        <div class="prediction-title">Early Diabetes Prediction</div>
+
+        <button class="predict-button" onclick="showPrediction()">Click to Predict</button>
+
+        <div id="result-box" class="prediction-result" style="display:none;">
+    <p><strong>Prediction:</strong> ডায়াবেটিস হওয়ার সম্ভাবনা বেশি</p>
+    <div class="suggestions-box">
+        <strong>প্রাথমিক পরামর্শ:</strong>
+        <ul>
+            <li>অবিলম্বে একজন চিকিৎসকের সাথে পরামর্শ করুন।</li>
+            <li>কম চিনি ও বেশি আঁশযুক্ত খাদ্য গ্রহণ করুন।</li>
+            <li>নিয়মিত ব্যায়াম করুন (প্রতিদিন অন্তত ৩০ মিনিট)।</li>
+            <li>নিয়মিত রক্তে শর্করার মাত্রা পরীক্ষা করুন।</li>
+        </ul>
+    </div>
+</div>
+
+    </div>
+
+    <script>
+        function showPrediction() {
+            document.getElementById("result-box").style.display = "block";
+        }
+    </script>
+
+</body>
+</html>
