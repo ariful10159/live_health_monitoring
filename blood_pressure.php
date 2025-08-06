@@ -1,6 +1,6 @@
 <?php
 // Database connection
-$servername = "localhost";
+$servername = "";
 $username = "root";
 $password = "";
 $dbname = "health_monitor";
