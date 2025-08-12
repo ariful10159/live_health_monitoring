@@ -1,25 +1,21 @@
 <?php
-header("Access-Control-Allow-Origin: *");  // CORS error এড়াতে
+header("Access-Control-Allow-Origin: *");
 
-// ডাটাবেজ কানেকশন সেটআপ
 $servername = "localhost";
 $username = "root";
-$password = "";    // তোমার XAMPP MySQL পাসওয়ার্ড যদি থাকে
+$password = "";
 $dbname = "health_monitor";
 
-// MySQL কানেক্ট করা
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// কানেকশন চেক করা
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// ✅ sensor_data টেবিল থেকে সর্বশেষ 8টি রেকর্ড আনা
-$sql_sensor_data = "SELECT * FROM sensor_data ORDER BY id DESC LIMIT 8";
+// Get last 50 sensor records (excluding GSR)
+$sql_sensor_data = "SELECT id, recorded_at, temp, hum, ds18, bpm, ecg, weight FROM sensor_data ORDER BY id DESC LIMIT 50";
 $result_sensor_data = $conn->query($sql_sensor_data);
 
-// sensor_data গুলো অ্যারে আকারে রাখা
 $sensor_data = [];
 if ($result_sensor_data->num_rows > 0) {
     while ($row = $result_sensor_data->fetch_assoc()) {
@@ -31,11 +27,10 @@ if ($result_sensor_data->num_rows > 0) {
             'bpm' => $row['bpm'] ?? "No data",
             'ecg' => $row['ecg'] ?? "No data",
             'weight' => $row['weight'] ?? "No data",
-            'gsr' => $row['gsr'] ?? "No data",
+            'gsr' => "No data" // Initialize with no data
         ];
     }
 } else {
-    // ডিফল্ট 1 রেকর্ড দিয়ে রাখি (array এর মধ্যে)
     $sensor_data[] = [
         'recorded_at' => "No data",
         'temp' => "No data",
@@ -48,29 +43,57 @@ if ($result_sensor_data->num_rows > 0) {
     ];
 }
 
-// ✅ শুধুমাত্র ecg এর সর্বশেষ 50টি মান আনা
-$sql_ecg_data = "SELECT ecg FROM sensor_data ORDER BY id DESC LIMIT 100";
+// Get GSR values from mental_health_wearable_data table - FIXED QUERY
+$sql_gsr_data = "SELECT GSR_Values as gsr_value, Timestamp 
+                 FROM mental_health_wearable_data 
+                 ORDER BY Timestamp DESC 
+                 LIMIT 50";
+
+$result_gsr_data = $conn->query($sql_gsr_data);
+
+if (!$result_gsr_data) {
+    die("GSR Query failed: " . $conn->error);
+}
+
+$gsr_values = [];
+if ($result_gsr_data->num_rows > 0) {
+    while ($row = $result_gsr_data->fetch_assoc()) {
+        $gsr_values[] = [
+            'timestamp' => $row['Timestamp'] ?? "No data",
+            'gsr_value' => $row['gsr_value'] ?? "No data"  // Using the alias
+        ];
+    }
+}
+
+// If we have GSR data, merge it with sensor data
+if (!empty($gsr_values)) {
+    // We'll match by array index since we're getting the same number of records (50)
+    foreach ($sensor_data as $key => &$data) {
+        if (isset($gsr_values[$key])) {
+            $data['gsr'] = $gsr_values[$key]['gsr_value'];
+        }
+    }
+}
+
+// Get ECG values
+$sql_ecg_data = "SELECT ecg_value FROM ecg_values LIMIT 4000";
 $result_ecg_data = $conn->query($sql_ecg_data);
 
 $ecg_values = [];
 if ($result_ecg_data->num_rows > 0) {
     while ($row = $result_ecg_data->fetch_assoc()) {
-        $ecg_values[] = $row['ecg'] ?? 0;
+        $ecg_values[] = $row['ecg_value'] ?? 0;
     }
 } else {
-    // fallback default 0 values
-    $ecg_values = array_fill(0, 50, 0);
+    $ecg_values = array_fill(0, 300, 0);
 }
 
-// কানেকশন ক্লোজ
 $conn->close();
 
-// ✅ রেসপন্স JSON বানানো
 $response = [
-    'sensor_data' => $sensor_data,   // সর্বশেষ 8টি রেকর্ড
-    'ecg_values' => $ecg_values      // সর্বশেষ 50টি ecg মান
+    'sensor_data' => $sensor_data,
+    'ecg_values' => $ecg_values
 ];
 
-// JSON রিটার্ন করা
 echo json_encode($response);
 ?>

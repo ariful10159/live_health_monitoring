@@ -463,7 +463,215 @@
         });
     </script>
 
+    <!-- Part 1: GSR Chart Script -->
     <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // Fetch and display GSR data
+        fetch('gsr.php')
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error(`HTTP error! status: ${res.status}`);
+                }
+                return res.json();
+            })
+            .then(response => {
+                if (!response.success) {
+                    throw new Error(response.error || 'Failed to fetch GSR data');
+                }
+
+                // Process the data from the new response format
+                const gsrData = response.data;
+                
+                if (gsrData.length === 0) {
+                    console.warn('No GSR data available');
+                    document.getElementById(id).innerHTML = '<p class="no-data">No GSR data available</p>';
+                    return;
+                }
+
+                const labels = gsrData.map((d, i) => `Reading ${i + 1}`);
+                const values = gsrData.map(d => parseFloat(d.gsr_value) || 0);
+
+                // Auto-calculate min/max with padding
+                const minValue = Math.min(...values);
+                const maxValue = Math.max(...values);
+                const padding = (maxValue - minValue) * 0.2; // 20% padding
+
+                createSmoothGSRChart(
+                    'gsrChart', 
+                    'GSR Readings', 
+                    labels, 
+                    values,
+                    '#2ecc71', 
+                    minValue - padding, 
+                    maxValue + padding
+                );
+            })
+            .catch(error => {
+                console.error('Error fetching GSR data:', error);
+                document.getElementById('gsrChart').innerHTML = 
+                    `<p class="error-message">Error loading GSR data: ${error.message}</p>`;
+            });
+
+        function createSmoothGSRChart(id, label, labels, data, color, minY, maxY) {
+            const ctx = document.getElementById(id).getContext('2d');
+            
+            // Clear previous chart if it exists
+            if (window.gsrChart instanceof Chart) {
+                window.gsrChart.destroy();
+            }
+            
+            const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+            gradient.addColorStop(0, color + '80');
+            gradient.addColorStop(1, color + '10');
+
+            window.gsrChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointRadius: 0,
+                        pointHoverRadius: 5,
+                        pointHoverBackgroundColor: color,
+                        pointHitRadius: 10,
+                        tension: 0.4,
+                        fill: true,
+                        cubicInterpolationMode: 'monotone'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 2000,
+                        easing: 'easeOutQuart'
+                    },
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: label,
+                            font: { 
+                                size: 18,
+                                weight: 'bold',
+                                family: 'Arial'
+                            },
+                            padding: {
+                                top: 10,
+                                bottom: 20
+                            }
+                        },
+                        legend: { 
+                            display: false 
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: 'rgba(0,0,0,0.7)',
+                            bodyFont: {
+                                size: 14,
+                                weight: 'bold'
+                            },
+                            padding: 12,
+                            cornerRadius: 6,
+                            callbacks: {
+                                label: function(context) {
+                                    return `GSR: ${context.parsed.y.toFixed(2)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            min: Math.max(minY, 0), // Ensure minimum is not negative
+                            max: maxY,
+                            grid: { 
+                                color: 'rgba(0, 0, 0, 0.08)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                font: {
+                                    size: 12
+                                },
+                                padding: 10,
+                                callback: function(value) {
+                                    return value.toFixed(2);
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'GSR Value',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { 
+                                display: false,
+                                drawBorder: false
+                            },
+                            ticks: {
+                                autoSkip: true,
+                                maxTicksLimit: 10,
+                                font: {
+                                    size: 12
+                                },
+                                padding: 10
+                            },
+                            title: {
+                                display: true,
+                                text: 'Readings',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'nearest',
+                        axis: 'x'
+                    },
+                    elements: {
+                        line: {
+                            cubicInterpolationMode: 'monotone'
+                        }
+                    }
+                }
+            });
+        }
+
+        // Add CSS for error messages
+        const style = document.createElement('style');
+        style.textContent = `
+            .error-message, .no-data {
+                padding: 20px;
+                background: #ffebee;
+                color: #c62828;
+                border-radius: 4px;
+                text-align: center;
+                margin: 10px;
+                font-family: Arial, sans-serif;
+            }
+            .no-data {
+                color: #2e7d32;
+                background: #e8f5e9;
+            }
+        `;
+        document.head.appendChild(style);
+    });
+</script>
+
+
+    <!-- Part 2: Other Sensor Charts Script -->
+    <script>
+        // Other Sensor Charts Implementation
         document.addEventListener('DOMContentLoaded', function () {
             // Fetch latest reading
             fetch('last_one.php')
@@ -485,28 +693,25 @@
                     document.getElementById('last-updated').textContent = "Error loading data";
                 });
 
-            // Fetch main chart data (8 readings) and ECG values
+            // Fetch main chart data (8 readings)
             fetch('display_last_reading.php')
                 .then(res => res.json())
                 .then(data => {
-                    // Process the 8 readings for other charts including GSR
                     const labels = data.sensor_data.map((d, i) => `Reading ${i + 1}`);
                     const tempData = data.sensor_data.map(d => parseFloat(d.temp) || 0);
                     const humData = data.sensor_data.map(d => parseFloat(d.hum) || 0);
                     const ds18Data = data.sensor_data.map(d => parseFloat(d.ds18) || 0);
                     const bpmData = data.sensor_data.map(d => parseFloat(d.bpm) || 0);
-                    const gsrData = data.sensor_data.map(d => parseFloat(d.gsr) || 0);
 
                     createBarChart('tempChart', 'BMI(kg/m²)', labels, tempData, '#e74c3c', 15, 40);
                     createBarChart('humChart', 'BMR(Unit)', labels, humData, '#3498db', 1200, 2300);
                     createBarChart('ds18Chart', 'DS18 Temp', labels, ds18Data, '#e67e22', 25, 43);
                     createBarChart('bpmChart', 'Heart Rate', labels, bpmData, '#e84393', 40, 100);
-                    createLineChart('gsrChart', 'GSR', labels, gsrData, '#2ecc71', 200, 800);
 
-                    // Process the 50 ECG values
-                    const ecgLabels = Array.from({ length: 100 }, (_, i) => i + 1);
-                    const ecgData = data.ecg_values.slice(0, 100);
-                    createECGChart('ecgChart', 'ECG', ecgLabels, ecgData, '#9b59b6', 0.01, 0.08);
+                    // Process the ECG values
+                    const ecgLabels = Array.from({ length: 4000 }, (_, i) => i + 1);
+                    const ecgData = data.ecg_values.slice(0, 4000);
+                    createECGChart('ecgChart', 'ECG', ecgLabels, ecgData, '#9b59b6', 450, 650);
                 })
                 .catch(error => {
                     console.error('Error fetching chart data:', error);
@@ -527,26 +732,6 @@
                         }]
                     },
                     options: getChartOptions(label, false, minY, maxY)
-                });
-            }
-
-            function createLineChart(id, label, labels, data, color, minY, maxY) {
-                const ctx = document.getElementById(id).getContext('2d');
-                new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: labels,
-                        datasets: [{
-                            label: label,
-                            data: data,
-                            borderColor: color,
-                            backgroundColor: color + '20',
-                            borderWidth: 2,
-                            tension: 0.1,
-                            fill: true
-                        }]
-                    },
-                    options: getChartOptions(label, true, minY, maxY)
                 });
             }
 
@@ -599,7 +784,7 @@
             }
 
             function getChartOptions(title, isMultiLine = false, minY = null, maxY = null) {
-                const baseOptions = {
+                return {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
@@ -626,7 +811,6 @@
                         }
                     }
                 };
-                return baseOptions;
             }
 
             // Export CSV functionality
